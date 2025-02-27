@@ -7,7 +7,7 @@ import torch.nn as nn
 from transformers import BertPreTrainedModel, BertTokenizer, BertModel
 import torch.nn.functional as F
 import math
-from typing import Dict
+from fastapi import Body
 
 app = FastAPI(title="통합 FastAPI Inference 서버")
 
@@ -60,7 +60,7 @@ class KoBERTIntimacy(BertPreTrainedModel):
         self.intimacy_regressor = nn.Linear(config.hidden_size, 1)
         self.sigmoid = nn.Sigmoid()
         self.init_weights()
-    
+
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, labels=None):
         outputs = self.bert(
             input_ids=input_ids,
@@ -70,7 +70,7 @@ class KoBERTIntimacy(BertPreTrainedModel):
         pooled_output = outputs.pooler_output
         intimacy_score = self.intimacy_regressor(pooled_output).squeeze(1)
         # 0~5 범위로 정규화
-        intimacy_score = self.sigmoid(intimacy_score) * 5  
+        intimacy_score = self.sigmoid(intimacy_score) * 5
         return {"intimacy_scores": intimacy_score}
 
 # 모델 및 토크나이저 로드
@@ -103,7 +103,7 @@ class SpeakerModel(BaseModel):
     u2: str
 
 @app.post("/empathy")
-def empathy_measure(corpus: str, speaker: SpeakerModel):
+def empathy_measure(corpus: str = Body(...), speaker: SpeakerModel=Body(...)):
     lines = corpus.split('\n')
     u1 = []
     u2 = []
@@ -119,7 +119,7 @@ def empathy_measure(corpus: str, speaker: SpeakerModel):
 
     # [{"speaker": "건우", "score":60}, {"speaker": "남희", "score":70}]
     dict1 = {"speaker" : speaker.u1, "score": textEmpathyMesureAvg(u1)}
-    dict2 = {"speaker": speaker.u1, "score": textEmpathyMesureAvg(u2)}
+    dict2 = {"speaker": speaker.u2, "score": textEmpathyMesureAvg(u2)}
 
     return [dict1, dict2]
 
@@ -128,7 +128,7 @@ def empathy_measure(corpus: str, speaker: SpeakerModel):
 def textEmpathyMesureAvg(lines: list):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     try:
-        mean_embedding = torch.load("model/empathy_mean_vector.pth", map_location=device)
+        mean_embedding = torch.load("empathy_mean_vector.pth", map_location=device)
         print("✅ 공감형 평균 벡터 로드 완료")
     except Exception as e:
         print("❌ 평균 벡터 로드 실패:", e)
@@ -141,23 +141,23 @@ def textEmpathyMesureAvg(lines: list):
 
     total_confidence = 0
     for parameter_text in lines:
-        predicted_label, confidence = predict_empathy(parameter_text, mean_embedding, tokenizer)
+        predicted_label, confidence = predict_empathy(parameter_text, mean_embedding, tokenizer, model)
         total_confidence += math.floor(confidence * 100)
     return math.floor(total_confidence / len(lines))
 
 
 # 입력 문장의 특징 벡터 추출
-def get_embedding(text, tokenizer):
+def get_embedding(text, tokenizer,model):
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding='max_length', max_length=512)
     inputs = {key: val.to(device) for key, val in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
-    return outputs.last_hidden_state.mean(dim=1)
+    return outputs["last_hidden_state"].mean(dim=1)
 
 # 유사도 기반 분류 함수
-def predict_empathy(text, mean_embedding, tokenizer):
+def predict_empathy(text, mean_embedding, tokenizer, model):
     print("🔍 예측 실행 중...")  # 디버깅용
-    text_embedding = get_embedding(text, tokenizer)
+    text_embedding = get_embedding(text, tokenizer, model)
 
     # 코사인 유사도 계산 (공감형 평균 벡터와 비교)
     similarity = F.cosine_similarity(text_embedding, mean_embedding.unsqueeze(0))
