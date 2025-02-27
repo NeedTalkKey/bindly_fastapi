@@ -4,7 +4,10 @@ from pydantic import BaseModel
 import torch
 from transformers import AutoTokenizer, AutoConfig
 import torch.nn as nn
-from transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertTokenizer, BertModel
+import torch.nn.functional as F
+import math
+from typing import Dict
 
 app = FastAPI(title="통합 FastAPI Inference 서버")
 
@@ -94,6 +97,79 @@ def predict_intimacy(data: TextInput):
     score = outputs["intimacy_scores"].item()  # 0~5 범위
     scaled_score = score * 20  # 0~100으로 변환
     return {"raw_score": score, "scaled_score": scaled_score}
+
+class SpeakerModel(BaseModel):
+    u1: str
+    u2: str
+
+@app.post("/empathy")
+def empathy_measure(corpus: str, speaker: SpeakerModel):
+    lines = corpus.split('\n')
+    u1 = []
+    u2 = []
+    for idx, text in enumerate(lines):
+        startIdx = len(text.split(": ")[0]) + 2
+        text = text[startIdx:]
+
+        # u1, u2의 문장을 각각 리스트로 담음
+        if idx % 2 == 0:
+            u1.append(text)
+        else:
+            u2.append(text)
+
+    # [{"speaker": "건우", "score":60}, {"speaker": "남희", "score":70}]
+    dict1 = {"speaker" : speaker.u1, "score": textEmpathyMesureAvg(u1)}
+    dict2 = {"speaker": speaker.u1, "score": textEmpathyMesureAvg(u2)}
+
+    return [dict1, dict2]
+
+# parameter : [문장1, 문장2, 문장3, ...]
+# return : 60%    등 평균 공감 점수
+def textEmpathyMesureAvg(lines: list):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    try:
+        mean_embedding = torch.load("model/empathy_mean_vector.pth", map_location=device)
+        print("✅ 공감형 평균 벡터 로드 완료")
+    except Exception as e:
+        print("❌ 평균 벡터 로드 실패:", e)
+        return None
+    tokenizer = BertTokenizer.from_pretrained("klue/bert-base")
+    model = BertModel.from_pretrained("klue/bert-base")
+    model.to(device)
+    model.eval()
+    print("✅ 모델 및 토크나이저 로드 완료")
+
+    total_confidence = 0
+    for parameter_text in lines:
+        predicted_label, confidence = predict_empathy(parameter_text, mean_embedding, tokenizer)
+        total_confidence += math.floor(confidence * 100)
+    return math.floor(total_confidence / len(lines))
+
+
+# 입력 문장의 특징 벡터 추출
+def get_embedding(text, tokenizer):
+    inputs = tokenizer(text, return_tensors="pt", truncation=True, padding='max_length', max_length=512)
+    inputs = {key: val.to(device) for key, val in inputs.items()}
+    with torch.no_grad():
+        outputs = model(**inputs)
+    return outputs.last_hidden_state.mean(dim=1)
+
+# 유사도 기반 분류 함수
+def predict_empathy(text, mean_embedding, tokenizer):
+    print("🔍 예측 실행 중...")  # 디버깅용
+    text_embedding = get_embedding(text, tokenizer)
+
+    # 코사인 유사도 계산 (공감형 평균 벡터와 비교)
+    similarity = F.cosine_similarity(text_embedding, mean_embedding.unsqueeze(0))
+
+    # ✅ 유사도 평균 계산 (문장 전체 유사도)
+    similarity_score = similarity.mean().item()
+
+    # 임계값 설정 (유사도가 0.5 이상이면 '공감형', 아니면 '직설형')
+    label = "공감형" if similarity_score >= 0.5 else "직설형"
+
+    print(f"✅ 예측 완료: {label} (유사도: {similarity_score:.4f})")  # 결과 출력
+    return label, similarity_score
 
 if __name__ == "__main__":
     import uvicorn
