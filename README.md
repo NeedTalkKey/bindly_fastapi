@@ -1,15 +1,45 @@
-# Bindly FastAPI
+# ⚡ Bindly FastAPI
+<h4 align="center"> 
+<img src="https://github.com/user-attachments/assets/acbce417-7713-4fef-87db-602a7c25191c" alt="long" border="0">
+</h4>
+ 
 **Bindly** 프로젝트의 모델 예측 수행을 담당하는 FastAPI 기반 저장소입니다. ⚡
 
+----
 ## 🚀 프로젝트 개요
-Bindly FastAPI는 다음과 같은 기능을 제공합니다:
+> Bindly FastAPI는 다음과 같은 기능을 제공합니다:
 
+<details>
+<summary> 💑 대화 상대와의 친밀도 분석 </summary>
+카카오톡 대화 기록을 기반으로 친밀도를 평가하여 점수화합니다.
+</details>
+ 
+<details>
+<summary> 📊 대화 스타일 및 관계 예측 </summary>
+대화 패턴을 분석하여 사용자의 대화 스타일(공감형)과, 상대방과의 관계를 예측해 줍니다.
+</details>
 
-- 🗣 **대화 상대와의 친밀도 분석**: 카카오톡 대화 기록을 기반으로 친밀도를 평가하여 점수화합니다.
-- 📊 **대화 스타일(공감형) 및 관계 예측**: 대화 패턴을 분석하여 사용자의 대화 스타일과, 상대방과의 관계를 예측해 줍니다.
-- 🔍 **KLUE-BERT 모델 기반 감정 분석**: 대화 데이터를 분석하여 긍정적인 대화 흐름과, 부정적인 대화 흐름을 판별합니다.
-- 🤖 **AI에게 받는 피드백**: OpenAI와 연결하여, 사용자의 대화 습관을 피드백받고, 개선된 대화 예시를 보여 줍니다.
-- ⚡ **고속 API 응답**: FastAPI를 기반으로 빠르고 확장 가능한 API를 제공합니다.
+<details>
+<summary> 🔍 KLUE-BERT 모델 기반 감정 분석 </summary>
+대화 데이터를 분석하여 긍정적인 대화 흐름과, 부정적인 대화 흐름을 판별합니다.
+</details>
+
+<details>
+<summary> 🤖 AI에게 받는 피드백 </summary>
+OpenAI와 연결하여, 사용자의 대화 습관을 피드백받고, 개선된 대화 예시를 보여 줍니다.
+</details>
+
+<details>
+<summary> ⚡ 고속 API 응답 </summary>
+FastAPI를 기반으로 빠르고 확장 가능한 API를 제공합니다.
+</details>
+
+## 🤗 허깅페이스에 서빙 중인 Bindly AI 모델
+- [친밀도 예측](https://huggingface.co/kelly9457/bindly-I-v4) 모델
+- [관계 예측](https://huggingface.co/kelly9457/bindly-R) 모델
+- [긍정, 부정적 대화 흐름 판별](https://huggingface.co/chihopark/bindly-sentiment-v6) 모델
+
+ *저희 모델은 모두 [KLUE/BERT-BASE 모델](https://huggingface.co/klue/bert-base)을 기반으로 파인튜닝 하였습니다. 🔧*
   
 ## 📂 디렉토리 구조
 
@@ -71,3 +101,11 @@ Bindly FastAPI는 다음과 같은 기능을 제공합니다:
 ## 📜 라이선스
 
 이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+
+---
+
+**Bindly** 프로젝트의 다른 Git도 둘러보세요!
+> 🐇 [Bindly Front-end](https://github.com/NeedTalkKey/bindly_front)
+> 
+> 🐰 [Bindly Back-end](https://github.com/NeedTalkKey/bindly_back)
+
